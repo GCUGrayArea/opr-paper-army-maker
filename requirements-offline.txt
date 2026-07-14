@@ -1,0 +1,7 @@
+# Ingestion-pipeline-only dependencies (ingest/, ocr/, mapping/).
+# Not required on the runtime host — see PRD §7.
+-r requirements.txt
+PyMuPDF
+pytesseract
+Pillow
+rapidfuzz

@@ -219,3 +219,7 @@ __marimo__/
 
 # Source mini PDFs (large, per-faction assets — not committed)
 /Books/
+
+# Runtime data: SQLite index + generated output PDFs
+/data/*
+!/data/.gitkeep
