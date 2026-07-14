@@ -54,8 +54,10 @@ committed (`37fd099`, `9d4d06f`).
 ## Resuming on another machine
 
 `Books/` (source PDFs + army book JSON) and `data/` (SQLite index, generated
-output) are both gitignored — neither is in this repo. To pick up review work
-elsewhere:
+output) are both gitignored — neither is in this repo. **Both were zipped and
+uploaded to Google Drive** as of this WIP commit so the exact current state
+(including `data/index.sqlite`) travels with you — unzip both to the repo root
+before resuming, rather than starting from a fresh `git clone` alone.
 
 1. Make sure `Books/` is present (same fixture layout: `Books/<Faction
    Name>/<Faction Name>.json` + `*.pdf`).
