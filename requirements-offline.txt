@@ -6,3 +6,4 @@ pytesseract
 Pillow
 rapidfuzz
 numpy
+opencv-python-headless

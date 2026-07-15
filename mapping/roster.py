@@ -27,10 +27,19 @@ def load_army_book(path: str | Path) -> dict:
         return json.load(f)
 
 
+# Both gain types show up as their own printed mini-sheet row/page (a distinct
+# weapon swap, or a distinct named character title such as "Commander" /
+# "Drill Sergeant" granted by a hero- or squad-model upgrade), so both are
+# matchable loadout labels. ArmyBookRule gains are excluded — a rules-text
+# buff with no separate sculpt (e.g. a vehicle transport rule) isn't a label
+# that will ever appear printed on a sheet.
+LOADOUT_GAIN_TYPES = {"ArmyBookWeapon", "ArmyBookItem"}
+
+
 def extract_roster(army_book: dict) -> list[RosterUnit]:
     """Build one RosterUnit per unit in an army book, with loadouts collected
-    from the unit's base weapons plus every weapon-swap upgrade option
-    reachable from it."""
+    from the unit's base weapons plus every weapon-swap or named-character-title
+    upgrade option reachable from it."""
     packages_by_uid = {p["uid"]: p for p in army_book.get("upgradePackages", [])}
 
     roster = []
@@ -44,7 +53,7 @@ def extract_roster(army_book: dict) -> list[RosterUnit]:
             for section in package.get("sections", []):
                 for option in section.get("options", []):
                     for gain in option.get("gains", []):
-                        if gain.get("type") == "ArmyBookWeapon" and gain.get("name"):
+                        if gain.get("type") in LOADOUT_GAIN_TYPES and gain.get("name"):
                             loadouts.add(gain["name"])
         roster.append(RosterUnit(names=names, loadouts=sorted(loadouts)))
     return roster

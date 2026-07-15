@@ -6,7 +6,23 @@ import numpy as np
 from PIL import Image
 
 DARK_PIXEL_THRESHOLD = 128
-GRID_LINE_FRACTION = 0.9
+# Real horizontal grid rules on a clean row measure ~0.90-0.98 dark-pixel
+# coverage, but some genuine rules (observed down to 0.8497 on a real HDF
+# page) render fainter, and a missed rule silently drops that row's entry
+# entirely — with nothing downstream to notice or recover it. A too-low
+# false-positive rule just becomes a low-quality candidate for the
+# human/vision review pass to reject, which is a far cheaper failure mode
+# than silent data loss, so this threshold is deliberately biased toward
+# recall.
+ROW_LINE_FRACTION = 0.8
+# Column-rule detection needs the opposite bias: complex die-cut artwork
+# (e.g. overlapping wheel/weapon silhouettes on a merged/misdetected row)
+# throws off many spurious near-full-height vertical edges once the
+# threshold drops much below ~0.9, which explodes the detected column count
+# past MAX_PLAUSIBLE_COL_BOUNDS and causes the whole row to be rejected —
+# turning a merged-but-salvageable row into a totally silent one. Keep this
+# one strict.
+COL_LINE_FRACTION = 0.9
 CELL_INK_FRACTION = 0.02
 
 # Non-grid content (cover art, logos, body text) can trip the line-fraction
@@ -104,7 +120,7 @@ def find_row_bands(image: Image.Image) -> list[tuple[int, int]]:
     # would dilute the fraction wherever the grid doesn't span the whole page.
     box = dark[r0 : r1 + 1, c0 : c1 + 1]
     row_frac = box.mean(axis=1)
-    line_positions = np.where(row_frac > GRID_LINE_FRACTION)[0]
+    line_positions = np.where(row_frac > ROW_LINE_FRACTION)[0]
     boundaries = _merge_adjacent(line_positions)
     return [(r0 + boundaries[i], r0 + boundaries[i + 1]) for i in range(len(boundaries) - 1)]
 
@@ -122,7 +138,7 @@ def find_col_bounds(image: Image.Image, y0: int, y1: int) -> list[int]:
     c0, c1 = int(ink_cols.min()), int(ink_cols.max())
     sub = band[:, c0 : c1 + 1]
     col_frac = sub.mean(axis=0)
-    line_positions = np.where(col_frac > GRID_LINE_FRACTION)[0]
+    line_positions = np.where(col_frac > COL_LINE_FRACTION)[0]
     boundaries = _merge_adjacent(line_positions)
     return [c0 + b for b in boundaries]
 

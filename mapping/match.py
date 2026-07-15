@@ -26,9 +26,31 @@ def _best_name_score(text: str, names: list[str]) -> float:
     return max(fuzz.WRatio(text, name) for name in names)
 
 
+def _best_loadout_match(text: str, roster: list[RosterUnit]) -> tuple[RosterUnit, str, float] | None:
+    """Best (unit, loadout) match treating `text` as a loadout/title label in
+    its own right, searched across every unit's loadouts rather than a
+    pre-picked unit. Used for character-title labels (e.g. "Commander",
+    "Drill Sergeant") that print with no unit-name line at all."""
+    best: tuple[RosterUnit, str, float] | None = None
+    for unit in roster:
+        for loadout in unit.loadouts:
+            score = fuzz.WRatio(text, loadout)
+            if best is None or score > best[2]:
+                best = (unit, loadout, score)
+    return best
+
+
 def resolve_label(raw_text: str, roster: list[RosterUnit]) -> MatchResult | None:
-    """Fuzzy-match an OCR'd label (one line — unit only, defaulted loadout — or
-    two lines — unit, then loadout/weapon name) against a faction roster.
+    """Fuzzy-match an OCR'd label against a faction roster. Two readings are
+    tried and the more confident one wins:
+    - split: first line is the unit name, second line (if any) is the
+      loadout/weapon name, defaulting to DEFAULT_LOADOUT if there's only one
+      line — the common bulk/options-sheet row format.
+    - title: the whole label (lines rejoined) is itself a loadout/title name
+      with no separate unit-name line — hero/squad specialist upgrade pages
+      (e.g. "Commander", "Drill Sergeant") print this way, sometimes with
+      the title OCR-wrapped across two lines (e.g. "Forward" / "Observer").
+
     Returns None if there's no text or roster to match against; the caller
     should treat that as an unresolved entry for human review, not a crash.
     """
@@ -49,9 +71,23 @@ def resolve_label(raw_text: str, roster: list[RosterUnit]) -> MatchResult | None
         loadout = DEFAULT_LOADOUT
         loadout_score = 100.0
 
-    return MatchResult(
+    as_split = MatchResult(
         unit=best_unit.canonical_name,
         loadout=loadout,
         unit_score=unit_score,
         loadout_score=loadout_score,
     )
+
+    title_match = _best_loadout_match(" ".join(lines), roster)
+    if title_match is not None:
+        title_unit, title_loadout, title_score = title_match
+        as_title = MatchResult(
+            unit=title_unit.canonical_name,
+            loadout=title_loadout,
+            unit_score=title_score,
+            loadout_score=title_score,
+        )
+        if as_title.confidence > as_split.confidence:
+            return as_title
+
+    return as_split
